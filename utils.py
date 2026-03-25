@@ -17,7 +17,12 @@ from typing import List, Dict, Tuple
 from datetime import datetime
 import os
 import re
+import requests
 import urllib3
+import time
+import math
+import json
+import sqlite3
 
 try:
     from colorama import init, Fore, Style
@@ -31,6 +36,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Constants and tuning
 TIMEOUT = 15
+DEFAULT_REQUEST_TIMEOUT = 10
+REQUEST_PAUSE_SECS = 0.5
+MAX_RETRIES = 3
 MAX_JS_COUNT = 500
 MAX_FILE_SIZE_MB = 2  # Skip files >2MB
 MAX_CONCURRENT = 8
@@ -172,6 +180,130 @@ def ensure_directories(*dirs: str):
         Path(directory).mkdir(parents=True, exist_ok=True)
 
 
+def safe_requests_get(url, session=None, timeout=DEFAULT_REQUEST_TIMEOUT, **kwargs):
+    """Robust GET with retries, timeout, and rate-limiting."""
+    s = session or requests.Session()
+    kwargs.setdefault('verify', False)
+    kwargs.setdefault('headers', {'User-Agent': 'Mozilla/5.0 (compatible)'});
+    last_exception = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = s.get(url, timeout=timeout, **kwargs)
+            resp.raise_for_status()
+            time.sleep(REQUEST_PAUSE_SECS)
+            return resp
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            last_exception = e
+            log_print(f"Request failed ({attempt}/{MAX_RETRIES}) for {url}: {e}")
+            if attempt < MAX_RETRIES:
+                time.sleep(REQUEST_PAUSE_SECS)
+            continue
+        except requests.exceptions.HTTPError as e:
+            raise
+        except requests.exceptions.RequestException as e:
+            last_exception = e
+            log_print(f"RequestException ({attempt}/{MAX_RETRIES}) for {url}: {e}")
+            if attempt < MAX_RETRIES:
+                time.sleep(REQUEST_PAUSE_SECS)
+            continue
+    if last_exception is not None:
+        raise last_exception
+
+
+def shannon_entropy(value: str) -> float:
+    """Calculate Shannon entropy for a string."""
+    if not value:
+        return 0.0
+    freq = {c: value.count(c) / len(value) for c in set(value)}
+    return -sum(p * math.log2(p) for p in freq.values())
+
+
+def is_high_entropy(candidate: str, threshold: float = 4.5) -> bool:
+    """Check if string is likely a high-entropy secret."""
+    return shannon_entropy(candidate) >= threshold
+
+
+def maybe_beautify_js(content: str) -> str:
+    """Attempt to beautify JS content for better matching."""
+    try:
+        import jsbeautifier
+        opts = jsbeautifier.default_options()
+        opts.indent_size = 2
+        return jsbeautifier.beautify(content, opts)
+    except Exception:
+        return content
+
+
+def write_json_report(detailed_results: List[Dict], output_path: str = 'output/scan_report.json') -> None:
+    ensure_directories(os.path.dirname(output_path) or '.')
+    payload = {
+        'generated': datetime.now().isoformat(),
+        'files': detailed_results,
+    }
+    with open(output_path, 'w', encoding='utf-8') as fh:
+        json.dump(payload, fh, indent=2, ensure_ascii=False)
+    print_success(f'JSON report saved: {output_path}')
+
+
+def write_html_report(detailed_results: List[Dict], output_path: str = 'output/scan_report.html') -> None:
+    ensure_directories(os.path.dirname(output_path) or '.')
+    colors = {
+        'CRITICAL': '#ff4d4d',
+        'HIGH': '#ff8800',
+        'MEDIUM': '#ffdb4d',
+        'LOW': '#4dff4d',
+    }
+    rows = []
+    for res in detailed_results:
+        for f in res.get('findings', []):
+            color = colors.get(f.get('severity', 'LOW').upper(), '#eeeeee')
+            rows.append(
+                f"<tr style='background:{color};'><td>{res.get('file')}</td><td>{f.get('severity')}</td><td>{f.get('type')}</td><td>{f.get('match')}</td><td>{f.get('line')}</td></tr>"
+            )
+    html_body = """
+<html><head><meta charset='utf-8'><title>JS-Leaker HTML Report</title></head><body>
+<h1>JS-Leaker Report</h1>
+<table border='1' cellpadding='6' cellspacing='0'>
+<tr><th>File</th><th>Severity</th><th>Type</th><th>Match</th><th>Line</th></tr>
+""" + '\n'.join(rows) + "</table></body></html>"
+    with open(output_path, 'w', encoding='utf-8') as fh:
+        fh.write(html_body)
+    print_success(f'HTML report saved: {output_path}')
+
+
+def db_init(path: str = 'js_leaker_state.db') -> sqlite3.Connection:
+    conn = sqlite3.connect(path, timeout=10)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS scans (
+                 id INTEGER PRIMARY KEY,
+                 url TEXT UNIQUE,
+                 status TEXT,
+                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                 )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS findings (
+                 id INTEGER PRIMARY KEY,
+                 scan_id INTEGER,
+                 file TEXT,
+                 type TEXT,
+                 match TEXT,
+                 severity TEXT,
+                 line INTEGER,
+                 context TEXT,
+                 FOREIGN KEY(scan_id) REFERENCES scans(id)
+                 )''')
+    conn.commit()
+    return conn
+
+
+def mark_scan_state(conn: sqlite3.Connection, url: str, state: str):
+    try:
+        c = conn.cursor()
+        c.execute("INSERT OR REPLACE INTO scans (url, status, last_updated) VALUES (?, ?, CURRENT_TIMESTAMP)", (url, state))
+        conn.commit()
+    except Exception as e:
+        log_print(f"Could not update scan state: {e}")
+
+
 # SECRET PATTERNS: (name, regex, severity)
 # Severity: HIGH, MEDIUM, LOW
 SECRET_PATTERNS: List[Tuple[str, re.Pattern, str]] = [
@@ -187,6 +319,10 @@ SECRET_PATTERNS: List[Tuple[str, re.Pattern, str]] = [
     ('Basic Auth Base64', re.compile(r"\bBasic\s+[A-Za-z0-9+/=]{20,}\b"), 'MEDIUM'),
     ('Generic API Key', re.compile(r"\bapi[_-]?key\s*[:=]\s*['\"]?[A-Za-z0-9-_]{16,64}['\"]?\b", re.I), 'MEDIUM'),
     ('OAuth Token', re.compile(r"\boauth_token\s*[:=]\s*['\"]?[A-Za-z0-9\-_.]{8,}['\"]?\b", re.I), 'MEDIUM'),
+    ('Slack Webhook URL', re.compile(r"https?://hooks\.slack\.com/services/[A-Z0-9]{9,}/[A-Z0-9]{9,}/[a-zA-Z0-9]{24,}"), 'HIGH'),
+    ('Twilio Auth Token', re.compile(r"\bSK[0-9a-fA-F]{32}\b"), 'HIGH'),
+    ('SendGrid API Key', re.compile(r"\bSG\.[A-Za-z0-9\-_]{22}\.[A-Za-z0-9\-_]{43}\b"), 'HIGH'),
+    ('OpenAI API Key', re.compile(r"\bsk-[A-Za-z0-9]{48,56}\b"), 'HIGH'),
 ]
 
 
@@ -205,6 +341,8 @@ def detect_secrets_in_text(text: str) -> List[Dict]:
         try:
             for m in pattern.finditer(text):
                 match_text = m.group(0)
+                if len(match_text) >= 20 and not is_high_entropy(match_text):
+                    continue
                 # approximate line number
                 start_pos = m.start()
                 line_no = text.count('\n', 0, start_pos) + 1

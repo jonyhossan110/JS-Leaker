@@ -18,7 +18,7 @@ import os
 from pathlib import Path
 from typing import List, Dict
 import urllib3
-from utils import log_print, print_warning, print_error, TIMEOUT, ensure_directories, save_text_file
+from utils import log_print, print_warning, print_error, TIMEOUT, ensure_directories, save_text_file, safe_requests_get, DEFAULT_REQUEST_TIMEOUT
 
 # Disable SSL warnings from urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -38,7 +38,7 @@ class JSCollector:
         })
         ensure_directories('data/external', 'data/inline')
 
-    def collect(self, target_url: str) -> Dict[str, List[str]]:
+    def collect(self, target_url: str, dynamic: bool = False) -> Dict[str, List[str]]:
         """Collect both static and dynamic JS, saving to disk.
 
         Returns dict with lists: external_js (urls) and inline_js (local file paths)
@@ -49,8 +49,7 @@ class JSCollector:
 
         # Static collection first
         try:
-            resp = self.session.get(target_url, timeout=TIMEOUT, verify=False)
-            resp.raise_for_status()
+            resp = safe_requests_get(target_url, session=self.session, timeout=DEFAULT_REQUEST_TIMEOUT)
             html = resp.text
             soup = BeautifulSoup(html, 'html.parser')
 
@@ -74,23 +73,32 @@ class JSCollector:
             for m in re.finditer(r'https?://[^"\'>\s]+\.js(?:\?[^"\'>\s]*)?', html, re.I):
                 external.add(m.group(0))
 
+            # Webpack chunk patterns (vendor.js, chunk.js, runtime.js, app.*.js)
+            for m in re.finditer(r"(?:(?:https?://|/)[^\s\"'<>]*?(?:chunk|vendor|runtime|app)[^\s\"'<>]*\.js)", html, re.I):
+                maybe_url = m.group(0)
+                if maybe_url.startswith('http'):
+                    external.add(maybe_url)
+                else:
+                    external.add(urljoin(target_url, maybe_url))
+
         except Exception as e:
             print_error(f'Static collection failed for {target_url}: {e}')
 
         # Dynamic collection via Playwright (preferred). Fallback if not available.
-        try:
-            dynamic_ext, dynamic_inline = self._collect_dynamic_playwright(target_url)
-            for u in dynamic_ext:
-                external.add(u)
-            for content in dynamic_inline:
-                h = hashlib.sha1(content.encode('utf-8', errors='replace')).hexdigest()
-                if h not in inline_hashes:
-                    inline_hashes.add(h)
-                    p = self._save_inline(content, target_url)
-                    if p:
-                        inline_paths.append(p)
-        except Exception as e:
-            print_warning(f'Playwright dynamic collection failed: {e}')
+        if dynamic:
+            try:
+                dynamic_ext, dynamic_inline = self._collect_dynamic_playwright(target_url)
+                for u in dynamic_ext:
+                    external.add(u)
+                for content in dynamic_inline:
+                    h = hashlib.sha1(content.encode('utf-8', errors='replace')).hexdigest()
+                    if h not in inline_hashes:
+                        inline_hashes.add(h)
+                        p = self._save_inline(content, target_url)
+                        if p:
+                            inline_paths.append(p)
+            except Exception as e:
+                print_warning(f'Playwright dynamic collection failed: {e}')
 
         return {
             'external_js': sorted(list(external)),
@@ -148,6 +156,12 @@ class JSCollector:
                 rendered = page.content()
                 for m in re.finditer(r'https?://[^"\'>\s]+\.js(?:\?[^"\'>\s]*)?', rendered, re.I):
                     external.add(m.group(0))
+                for m in re.finditer(r"(?:(?:https?://|/)[^\s\"'<>]*?(?:chunk|vendor|runtime|app)[^\s\"'<>]*\.js)", rendered, re.I):
+                    maybe_url = m.group(0)
+                    if maybe_url.startswith('http'):
+                        external.add(maybe_url)
+                    else:
+                        external.add(urljoin(url, maybe_url))
 
                 try:
                     browser.close()

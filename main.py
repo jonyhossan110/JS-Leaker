@@ -38,6 +38,13 @@ from utils import (
     write_scan_report,
     should_skip_file,
     print_dashboard,
+    safe_requests_get,
+    maybe_beautify_js,
+    write_json_report,
+    write_html_report,
+    db_init,
+    mark_scan_state,
+    DEFAULT_REQUEST_TIMEOUT,
 )
 from collector import JSCollector
 
@@ -74,10 +81,9 @@ def download_and_save(url: str, target_dir: str, domain: str, seen_hashes: set, 
     Returns local path or ''.
     """
     try:
-        resp = requests.get(url, timeout=timeout, verify=False, headers={
+        resp = safe_requests_get(url, timeout=timeout, headers={
             'User-Agent': 'Mozilla/5.0 (compatible)'
         })
-        resp.raise_for_status()
         content = resp.text
         h = hashlib.sha1(content.encode('utf-8', errors='replace')).hexdigest()
         if h in seen_hashes:
@@ -110,6 +116,7 @@ def scan_files(file_paths: list) -> list:
         try:
             with open(fp, 'r', encoding='utf-8', errors='replace') as fh:
                 text = fh.read()
+            text = maybe_beautify_js(text)
             findings = detect_secrets_in_text(text)
             if findings:
                 results.append({'file': fp, 'findings': findings})
@@ -172,6 +179,11 @@ def main():
     parser.add_argument('-u', '--url', required=True, help='Target URL (e.g., https://example.com)')
     parser.add_argument('-t', '--threads', type=int, default=4, help='Number of worker threads for download/scan')
     parser.add_argument('-o', '--output-file', default='output/scan_report.txt', help='Output file for detailed report')
+    parser.add_argument('--dynamic', action='store_true', help='Collect dynamic JS using Playwright')
+    parser.add_argument('--format', choices=['text', 'json', 'html'], default='text', help='Output format for scan report')
+    parser.add_argument('--proxy', help='Proxy URL (e.g., http://127.0.0.1:8080)')
+    parser.add_argument('--cookie', help='Cookie header value for authenticated pages')
+    parser.add_argument('--auth', help='Authorization header value (Bearer / Basic token)')
     args = parser.parse_args()
 
     target = args.url
@@ -191,17 +203,33 @@ def main():
     print_info(f"Workers: {workers}")
     print_info(f"Output folder: {os.path.join(out_dir, domain)}")
 
+    # Network session settings (proxy/cookies/auth)
+    session = requests.Session()
+    if args.proxy:
+        session.proxies.update({'http': args.proxy, 'https': args.proxy})
+        print_info(f"Using proxy: {args.proxy}")
+    if args.cookie:
+        session.headers.update({'Cookie': args.cookie})
+        print_info("Custom Cookie header set")
+    if args.auth:
+        session.headers.update({'Authorization': args.auth})
+        print_info("Custom Authorization header set")
+
+    # Scan state database
+    conn = db_init()
+    mark_scan_state(conn, target, 'STARTED')
+
     # Quick check if target is reachable
     try:
-        resp = requests.head(target, timeout=10, verify=False)
+        resp = session.head(target, timeout=DEFAULT_REQUEST_TIMEOUT, verify=False)
         if resp.status_code >= 400:
             print_warning(f"Target returned status {resp.status_code}")
     except Exception as e:
         print_warning(f"Could not reach target: {e}")
 
-    collector = JSCollector()
+    collector = JSCollector(session=session)
     print_info("Collecting JavaScript files...")
-    collect_res = collector.collect(target)
+    collect_res = collector.collect(target, dynamic=args.dynamic)
     external_urls = collect_res.get('external_js', [])
     inline_paths = collect_res.get('inline_js', [])
 
@@ -224,6 +252,8 @@ def main():
 
     if not all_js_files:
         print_error("No JavaScript files found to scan.")
+        mark_scan_state(conn, target, 'FAILED')
+        conn.close()
         return
 
     print_info(f"Scanning {len(all_js_files)} files for secrets...")
@@ -249,8 +279,17 @@ def main():
     for fpath, items in files_map.items():
         detailed_results.append({'file': fpath, 'findings': items})
 
-    write_scan_report(detailed_results, output_path=out_file)
+    if args.format == 'json':
+        write_json_report(detailed_results, output_path=os.path.join(out_dir, 'scan_report.json'))
+    elif args.format == 'html':
+        write_html_report(detailed_results, output_path=os.path.join(out_dir, 'scan_report.html'))
+    else:
+        write_scan_report(detailed_results, output_path=out_file)
+
     write_severity_summary(merged, outpath=os.path.join(out_dir, 'report.txt'))
+
+    mark_scan_state(conn, target, 'COMPLETED')
+    conn.close()
 
     print_success("Scan complete. Reports saved to output directory.")
     print_success(f"JavaScript files saved to: {os.path.join(out_dir, domain)}/")
