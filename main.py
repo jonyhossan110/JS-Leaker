@@ -21,6 +21,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
 import hashlib
 import requests
+import urllib3
+
+# Disable SSL warnings from urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from utils import (
     setup_logging,
@@ -70,7 +74,7 @@ def download_and_save(url: str, target_dir: str, domain: str, seen_hashes: set, 
     Returns local path or ''.
     """
     try:
-        resp = requests.get(url, timeout=timeout, headers={
+        resp = requests.get(url, timeout=timeout, verify=False, headers={
             'User-Agent': 'Mozilla/5.0 (compatible)'
         })
         resp.raise_for_status()
@@ -189,7 +193,7 @@ def main():
 
     # Quick check if target is reachable
     try:
-        resp = requests.head(target, timeout=10)
+        resp = requests.head(target, timeout=10, verify=False)
         if resp.status_code >= 400:
             print_warning(f"Target returned status {resp.status_code}")
     except Exception as e:

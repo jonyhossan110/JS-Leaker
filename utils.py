@@ -17,6 +17,7 @@ from typing import List, Dict, Tuple
 from datetime import datetime
 import os
 import re
+import urllib3
 
 try:
     from colorama import init, Fore, Style
@@ -24,6 +25,9 @@ try:
     HAS_COLORAMA = True
 except ImportError:
     HAS_COLORAMA = False
+
+# Disable SSL warnings from urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Constants and tuning
 TIMEOUT = 15
@@ -75,39 +79,40 @@ def print_error(message: str):
 def print_dashboard():
     """Print a professional colorized ASCII art dashboard for JS-Leaker."""
     if HAS_COLORAMA:
-        # ASCII art with color codes
+        # ASCII art with color codes - Clear JS-LEAKER display
         dashboard = f"""
-{Fore.CYAN}╔════════════════════════════════════════════════════════════════╗{Style.RESET_ALL}
-{Fore.CYAN}║{Style.RESET_ALL}                                                                  {Fore.CYAN}║{Style.RESET_ALL}
-{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}██╗███████╗{Style.RESET_ALL}{Fore.RED}██╗    ██╗███████╗ █████╗ ██╗  ██╗███████╗██████╗ {Style.RESET_ALL}  {Fore.CYAN}║{Style.RESET_ALL}
-{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}██║██╔════╝{Style.RESET_ALL}{Fore.RED}██║    ██║██╔════╝██╔══██╗██║ ██╔╝██╔════╝██╔══██╗{Style.RESET_ALL}  {Fore.CYAN}║{Style.RESET_ALL}
-{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}██║███████╗{Style.RESET_ALL}{Fore.RED}██║ █╗ ██║█████╗  ███████║█████╔╝ █████╗  ██████╔╝{Style.RESET_ALL}  {Fore.CYAN}║{Style.RESET_ALL}
-{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}██║╚════██║{Style.RESET_ALL}{Fore.RED}██║███╗██║██╔══╝  ██╔══██║██╔═██╗ ██╔══╝  ██╔══██╗{Style.RESET_ALL}  {Fore.CYAN}║{Style.RESET_ALL}
-{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}██║███████║{Style.RESET_ALL}{Fore.RED}╚███╔███╔╝███████╗██║  ██║██║  ██╗███████╗██║  ██║{Style.RESET_ALL}  {Fore.CYAN}║{Style.RESET_ALL}
-{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}╚═╝╚══════╝{Style.RESET_ALL}{Fore.RED} ╚══╝╚══╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝{Style.RESET_ALL}  {Fore.CYAN}║{Style.RESET_ALL}
-{Fore.CYAN}║{Style.RESET_ALL}                                                                  {Fore.CYAN}║{Style.RESET_ALL}
-{Fore.CYAN}║{Style.RESET_ALL}          {Fore.YELLOW}JavaScript Secret Scanner & Extractor{Style.RESET_ALL}                 {Fore.CYAN}║{Style.RESET_ALL}
-{Fore.CYAN}║{Style.RESET_ALL}                                                                  {Fore.CYAN}║{Style.RESET_ALL}
-{Fore.CYAN}╚════════════════════════════════════════════════════════════════╝{Style.RESET_ALL}
+{Fore.CYAN}╔═══════════════════════════════════════════════════════════════════╗{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}                                                                     {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}╔═══════╗{Style.RESET_ALL}{Fore.RED}╔═══════╗{Style.RESET_ALL}                                           {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}║ J S -{Style.RESET_ALL}{Fore.RED}║ LEAKER{Style.RESET_ALL}                                         {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}╚═══════╝{Style.RESET_ALL}{Fore.RED}╚═══════╝{Style.RESET_ALL}                                           {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}                                                                     {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}        {Fore.YELLOW}JavaScript Secret Scanner & Extractor{Style.RESET_ALL}                        {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}                                                                     {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}╚═══════════════════════════════════════════════════════════════════╝{Style.RESET_ALL}
 
-{Fore.GREEN}┌──────────────────────────────────────────────────────────────┐{Style.RESET_ALL}
-{Fore.GREEN}│{Style.RESET_ALL}  {Fore.CYAN}Created By:{Style.RESET_ALL} Md. Jony Hassain (HexaCyberLab)                {Fore.GREEN}│{Style.RESET_ALL}
-{Fore.GREEN}│{Style.RESET_ALL}  {Fore.CYAN}LinkedIn:{Style.RESET_ALL}   https://www.linkedin.com/in/md-jony-hassain/  {Fore.GREEN}│{Style.RESET_ALL}
-{Fore.GREEN}└──────────────────────────────────────────────────────────────┘{Style.RESET_ALL}
+{Fore.GREEN}┌─────────────────────────────────────────────────────────────────┐{Style.RESET_ALL}
+{Fore.GREEN}│{Style.RESET_ALL}  {Fore.CYAN}Created By:{Style.RESET_ALL} Md. Jony Hassain (HexaCyberLab)                  {Fore.GREEN}│{Style.RESET_ALL}
+{Fore.GREEN}│{Style.RESET_ALL}  {Fore.CYAN}LinkedIn:{Style.RESET_ALL}   https://www.linkedin.com/in/md-jony-hassain/    {Fore.GREEN}│{Style.RESET_ALL}
+{Fore.GREEN}└─────────────────────────────────────────────────────────────────┘{Style.RESET_ALL}
 """
     else:
         # Fallback plain ASCII art (no colors)
         dashboard = """
-╔════════════════════════════════════════════════════════════════╗
-║                                                                  ║
-║  JS-Leaker - JavaScript Secret Scanner & Extractor             ║
-║                                                                  ║
-╚════════════════════════════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                     ║
+║  ╔═══════╗ ╔═══════╗                                              ║
+║  ║ J S - ║ ║ LEAKER║                                              ║
+║  ╚═══════╝ ╚═══════╝                                              ║
+║                                                                     ║
+║        JavaScript Secret Scanner & Extractor                       ║
+║                                                                     ║
+╚═══════════════════════════════════════════════════════════════════╝
 
-┌──────────────────────────────────────────────────────────────┐
-│  Created By: Md. Jony Hassain (HexaCyberLab)                 │
-│  LinkedIn:   https://www.linkedin.com/in/md-jony-hassain/    │
-└──────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  Created By: Md. Jony Hassain (HexaCyberLab)                    │
+│  LinkedIn:   https://www.linkedin.com/in/md-jony-hassain/        │
+└─────────────────────────────────────────────────────────────────┘
 """
     print(dashboard)
 

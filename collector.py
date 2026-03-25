@@ -17,7 +17,11 @@ import hashlib
 import os
 from pathlib import Path
 from typing import List, Dict
+import urllib3
 from utils import log_print, print_warning, print_error, TIMEOUT, ensure_directories, save_text_file
+
+# Disable SSL warnings from urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class JSCollector:
@@ -45,7 +49,7 @@ class JSCollector:
 
         # Static collection first
         try:
-            resp = self.session.get(target_url, timeout=TIMEOUT)
+            resp = self.session.get(target_url, timeout=TIMEOUT, verify=False)
             resp.raise_for_status()
             html = resp.text
             soup = BeautifulSoup(html, 'html.parser')
