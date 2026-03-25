@@ -1,187 +1,155 @@
 # JS-Leaker
 
-**JavaScript Secret Scanner** - A professional cybersecurity tool for detecting exposed secrets in website JavaScript files.
+**JavaScript Secret Scanner and Link Collector**
 
-Created by **HexaCyberLab**  
-Author: **Md. Jony Hassain**  
-LinkedIn: [https://www.linkedin.com/in/md-jony-hassain/](https://www.linkedin.com/in/md-jony-hassain/)
+- Author: **Md. Jony Hassain**
+- GitHub: https://github.com/jonyhossan110/JS-Leaker
 
-## 🚀 Features
+JS-Leaker is a professional security utility for discovering and analyzing JavaScript-based information leaks. It crawls a target web page, collects external and inline JavaScript assets, scans code for credential patterns (API keys, tokens, secrets), and writes structured reports into an `output/` directory.
 
-- **Advanced JS Collection**: Static and dynamic JavaScript file discovery
-- **Concurrent Processing**: Multi-threaded downloads and scanning for speed
-- **Comprehensive Secret Detection**: JWT tokens, API keys, passwords, and more
-- **Base64 Decoding**: Automatically decodes and scans Base64-encoded secrets
-- **Severity Classification**: HIGH, MEDIUM, LOW risk categorization
-- **Cross-Platform**: Works on Windows, Linux, and macOS
-- **Clean CLI Interface**: Professional terminal UI with color support
+## ✅ Features
 
-## 📋 Requirements
+- Crawl and extract JavaScript references from websites
+- Download external JS files and parse inline scripts
+- Keyword- and regex-based secret detection (JWT, API keys, tokens, passwords)
+- Multi-threaded processing (configurable worker threads)
+- Supports CSV and plain text report outputs
+- Minimal dependencies, portable across Windows and Linux
 
-- Python 3.9+
-- Playwright browsers (for dynamic JS collection)
+## 📌 Prerequisites (global)
 
-## 🛠️ Installation
+- Python 3.x (3.8+ recommended)
 
-### Windows/Linux/macOS
+## 🐧 Prerequisites (Kali Linux)
 
-1. **Clone or download the repository**
+Kali Linux requires development dependencies for building Python extension packages.
 
-2. **Create a virtual environment** (recommended):
-   ```bash
-   python -m venv jsleaker-env
-   # On Windows:
-   jsleaker-env\Scripts\activate
-   # On Linux/macOS:
-   source jsleaker-env/bin/activate
-   ```
-
-3. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Install Playwright browsers**:
-   ```bash
-   playwright install
-   ```
-
-## 🎯 Usage
-
-### Basic Scan
-```bash
-python main.py -u https://example.com
-```
-
-### Advanced Usage
-```bash
-# Specify worker threads
-python main.py -u https://example.com -t 8
-
-# Custom output file
-python main.py -u https://example.com -o custom_report.txt
-
-# Full command with all options
-python main.py -u https://target-site.com -t 6 -o reports/scan.txt
-```
-
-### Command Line Arguments
-
-| Argument | Description | Default |
-|----------|-------------|---------|
-| `-u, --url` | Target URL to scan (required) | - |
-| `-t, --threads` | Number of worker threads | 4 |
-| `-o, --output-file` | Output file path | `output/scan_report.txt` |
-
-## 📊 Output
-
-The tool generates two types of reports:
-
-1. **Detailed Report** (`output/scan_report.txt`): Complete findings with context
-2. **Summary Report** (`output/report.txt`): Severity-based summary
-
-### Sample Output
-```
-==================================
-   JS-Leaker - Secret Scanner
-==================================
-Created by HexaCyberLab
-Author: Md. Jony Hassain
-LinkedIn: https://www.linkedin.com/in/md-jony-hassain/
-==================================
-
-[INFO] Target: https://example.com/
-[INFO] Workers: 4
-[INFO] Collecting JavaScript files...
-[SUCCESS] Found 43 external JS, 42 inline JS
-[INFO] Downloading external JavaScript files...
-[INFO] Scanning 85 files for secrets...
-[SUCCESS] Scan complete. Reports saved to output directory.
-```
-
-## 🔍 Detected Secrets
-
-The tool scans for:
-
-- **HIGH Severity**:
-  - JWT Tokens
-  - AWS Access Keys
-  - Google API Keys
-  - Private RSA Keys
-  - Firebase URLs
-
-- **MEDIUM Severity**:
-  - OAuth Tokens
-  - Generic API Keys
-  - Basic Auth (Base64)
-
-- **LOW Severity**:
-  - Passwords in clear text
-
-## 📁 Project Structure
-
-```
-JS-Leaker/
-│
-├── main.py              # CLI entry point with banner
-├── collector.py         # JavaScript collection (static + dynamic)
-├── scanner.py           # Secret scanning engine
-├── downloader.py        # Concurrent file downloader
-├── utils.py             # Utilities and logging functions
-├── requirements.txt     # Python dependencies
-├── README.md            # This file
-├── LICENSE              # MIT License
-├── .gitignore           # Git ignore rules
-│
-├── data/                # Collected JavaScript files
-│   ├── external/        # Downloaded external JS
-│   ├── inline/          # Extracted inline JS
-│   └── hashes.json      # Content hash cache
-│
-└── output/              # Scan reports and summaries
-```
-
-## 🐧 Linux Compatibility
-
-The tool is fully compatible with Linux:
+- `build-essential`
+- `python3-dev`
+- `python3-venv`
 
 ```bash
-# Install Python 3.9+ if needed
 sudo apt update
-sudo apt install python3 python3-pip python3-venv
-
-# Run the tool
-python3 main.py -u https://target.com
+sudo apt install python3-pip python3-venv build-essential python3-dev -y
 ```
 
-## ⚠️ Ethical Usage
+## 🛠 Setup Roadmap for Windows
 
-This tool is designed for **ethical cybersecurity purposes only**:
+1. Clone repository:
 
-- Use only on websites you own or have explicit permission to test
-- Respect robots.txt and terms of service
-- Do not use for unauthorized security testing
-- Report findings responsibly to website owners
+```powershell
+git clone https://github.com/jonyhossan110/JS-Leaker.git
+cd JS-Leaker
+```
 
-## 🤝 Contributing
+2. Create and activate virtual environment:
 
-Contributions are welcome! Please:
+```powershell
+python -m venv jsleaker-env
+jsleaker-env\Scripts\activate
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
+3. Install dependencies:
 
-## 📄 License
+```powershell
+pip install -r requirements.txt
+```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+4. (If needed) Install Playwright browsers:
 
-## 📞 Contact
-
-**HexaCyberLab**  
-**Md. Jony Hassain**  
-[LinkedIn](https://www.linkedin.com/in/md-jony-hassain/)
+```powershell
+playwright install
+```
 
 ---
 
-*Built with ❤️ for the cybersecurity community*
+## 🛠 Setup Roadmap for Kali Linux (CRITICAL)
+
+Kali often requires a fresh venv installation due to compilation requirements. Follow these steps exactly:
+
+1. Install base dependencies:
+
+```bash
+sudo apt update
+sudo apt install python3-pip python3-venv build-essential python3-dev -y
+```
+
+2. Clone repository:
+
+```bash
+git clone https://github.com/jonyhossan110/JS-Leaker.git
+cd JS-Leaker
+```
+
+3. Create a clean virtual environment:
+
+```bash
+python3 -m venv jsleaker-env
+source jsleaker-env/bin/activate
+```
+
+4. Install core Python libraries manually:
+
+```bash
+pip install --upgrade pip
+pip install bs4 requests playwright
+```
+
+5. Install Playwright browsers (Python target):
+
+```bash
+python3 -m playwright install
+```
+
+> Do NOT use Node-specific installs like `npm i -D playwright` in this Python workflow. The correct command is `python3 -m playwright install`.
+
+---
+
+## ▶️ Usage
+
+```bash
+python3 main.py -u https://example.com
+```
+
+Common options:
+
+- `-u`, `--url`: Target URL to scan (required)
+- `-t`, `--threads`: Number of worker threads (default from code)
+- `-o`, `--output`: Path to output report
+
+Example:
+
+```bash
+python3 main.py -u https://example.com -t 8 -o output/scan_report.txt
+```
+
+## 📂 Output Structure
+
+The tool generates reports in `output/`:
+
+- `output/scan_report.txt`: Detailed scan results with per-script discoveries, line context, and severity tags.
+- `output/report.txt`: High-level summary with total URLs processed, number of secrets found, and severity breakdown.
+
+## ⚠️ Disclaimer
+
+This tool is intended for authorized security testing only. Misuse may be illegal.
+
+- Use only on assets you own or have written permission to test
+- Respect responsible disclosure and scope boundaries
+- Do not use for unauthorized scanning or intrusion
+
+---
+
+## 🗂 Core Files
+
+- `main.py`: CLI entry point
+- `collector.py`: JavaScript URL extraction
+- `scanner.py`: Secret detection engine
+- `downloader.py`: Parallel file fetching
+- `utils.py`: helpers and logging
+
+## 📜 License
+
+Licensed under MIT. See [LICENSE](LICENSE).
+
 
