@@ -72,31 +72,47 @@ def print_error(message: str):
         print(f"[ERROR] {message}")
 
 
-def log_print(message: str):
-    """Print a message safely to console and logging.
+def print_dashboard():
+    """Print a professional colorized ASCII art dashboard for JS-Leaker."""
+    if HAS_COLORAMA:
+        # ASCII art with color codes
+        dashboard = f"""
+{Fore.CYAN}╔════════════════════════════════════════════════════════════════╗{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}                                                                  {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}██╗███████╗{Style.RESET_ALL}{Fore.RED}██╗    ██╗███████╗ █████╗ ██╗  ██╗███████╗██████╗ {Style.RESET_ALL}  {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}██║██╔════╝{Style.RESET_ALL}{Fore.RED}██║    ██║██╔════╝██╔══██╗██║ ██╔╝██╔════╝██╔══██╗{Style.RESET_ALL}  {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}██║███████╗{Style.RESET_ALL}{Fore.RED}██║ █╗ ██║█████╗  ███████║█████╔╝ █████╗  ██████╔╝{Style.RESET_ALL}  {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}██║╚════██║{Style.RESET_ALL}{Fore.RED}██║███╗██║██╔══╝  ██╔══██║██╔═██╗ ██╔══╝  ██╔══██╗{Style.RESET_ALL}  {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}██║███████║{Style.RESET_ALL}{Fore.RED}╚███╔███╔╝███████╗██║  ██║██║  ██╗███████╗██║  ██║{Style.RESET_ALL}  {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}  {Fore.CYAN}╚═╝╚══════╝{Style.RESET_ALL}{Fore.RED} ╚══╝╚══╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝{Style.RESET_ALL}  {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}                                                                  {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}          {Fore.YELLOW}JavaScript Secret Scanner & Extractor{Style.RESET_ALL}                 {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}║{Style.RESET_ALL}                                                                  {Fore.CYAN}║{Style.RESET_ALL}
+{Fore.CYAN}╚════════════════════════════════════════════════════════════════╝{Style.RESET_ALL}
 
-    Ensures non-fatal behavior on Windows consoles with limited encodings.
-    """
-    try:
-        if message is None:
-            message = ''
-        try:
-            safe_msg = str(message)
-        except Exception:
-            safe_msg = repr(message)
-        try:
-            print(safe_msg)
-        except UnicodeEncodeError:
-            print(safe_msg.encode('ascii', 'ignore').decode('ascii', 'ignore'))
-        try:
-            logging.info(safe_msg)
-        except Exception:
-            pass
-    except Exception:
-        try:
-            print('[LOG ERROR]')
-        except Exception:
-            pass
+{Fore.GREEN}┌──────────────────────────────────────────────────────────────┐{Style.RESET_ALL}
+{Fore.GREEN}│{Style.RESET_ALL}  {Fore.CYAN}Created By:{Style.RESET_ALL} Md. Jony Hassain (HexaCyberLab)                {Fore.GREEN}│{Style.RESET_ALL}
+{Fore.GREEN}│{Style.RESET_ALL}  {Fore.CYAN}LinkedIn:{Style.RESET_ALL}   https://www.linkedin.com/in/md-jony-hassain/  {Fore.GREEN}│{Style.RESET_ALL}
+{Fore.GREEN}└──────────────────────────────────────────────────────────────┘{Style.RESET_ALL}
+"""
+    else:
+        # Fallback plain ASCII art (no colors)
+        dashboard = """
+╔════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║  JS-Leaker - JavaScript Secret Scanner & Extractor             ║
+║                                                                  ║
+╚════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────┐
+│  Created By: Md. Jony Hassain (HexaCyberLab)                 │
+│  LinkedIn:   https://www.linkedin.com/in/md-jony-hassain/    │
+└──────────────────────────────────────────────────────────────┘
+"""
+    print(dashboard)
+
+
+def log_print(message: str):
     """Print a message safely to console and logging.
 
     Ensures non-fatal behavior on Windows consoles with limited encodings.

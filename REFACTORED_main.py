@@ -5,7 +5,7 @@ main.py - Orchestrates JS-Leaker
 Steps performed:
 - Parse CLI
 - Collect static + dynamic JS via `collector.py`
-- Download external JS in parallel
+- Download external JS in parallel to domain-specific folders
 - Scan all saved JS for secrets with patterns in `utils.py`
 - Produce `output/scan_report.txt` (detailed) and `output/report.txt` (severity summary)
 
